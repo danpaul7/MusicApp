@@ -1,98 +1,169 @@
 package com.example.musicplayerapp.ui.theme.screens
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.*
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 @Composable
 fun MusicScreen() {
-    // Gradient Background
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF1E1E1E), Color(0xFF121212))
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
+    val songs = listOf(
+        Song("Shape of You", "Ed Sheeran", "Divide", "2017", "3:53", "https://upload.wikimedia.org/wikipedia/en/b/b4/Shape_Of_You_%28Official_Single_Cover%29_by_Ed_Sheeran.png"),
+        Song("Blinding Lights", "The Weeknd", "After Hours", "2019", "3:20", "https://m.media-amazon.com/images/I/61C33rSMlWL.jpg"),
+        Song("Someone Like You", "Adele", "21", "2011", "4:45", "https://www.fathomentertainment.com/wp-content/uploads/Mobile-App-Cinemark.jpg"),
+    )
+
+    Scaffold(
+        bottomBar = { BottomNavBar() } // Bottom navigation bar
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(paddingValues)
+                .padding(16.dp)
         ) {
             Text(
-                "Welcome to MusicPlayer 🎶",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
+                "Music Picks for You",
                 color = Color.White,
-                textAlign = TextAlign.Center
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                "Your favorite tunes, just a tap away!",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Play Button
-            Button(
-                onClick = { /* Play Music */ },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
-                shape = RoundedCornerShape(12.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play", tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Play Music 🎵", fontSize = 18.sp, color = Color.White)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Browse Music
-            OutlinedButton(
-                onClick = { /* Navigate to Library */ },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFBB86FC))
-            ) {
-//                Icon(imageVector = Icons.Filled.LibraryMusic, contentDescription = "Library", tint = Color(0xFFBB86FC))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Browse Library 🎼", fontSize = 16.sp)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Settings
-            OutlinedButton(
-                onClick = { /* Navigate to Settings */ },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFBB86FC))
-            ) {
-                Icon(imageVector = Icons.Filled.Settings, contentDescription = "Settings", tint = Color(0xFFBB86FC))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Settings ⚙️", fontSize = 16.sp)
+                items(songs) { song ->
+                    MusicTile(song)
+                }
             }
         }
     }
 }
+
+@Composable
+fun MusicTile(song: Song) {
+    var expanded by remember { mutableStateOf(false) }
+    val cardSize by animateDpAsState(targetValue = if (expanded) 220.dp else 160.dp, label = "size")
+
+    Card(
+        modifier = Modifier
+            .size(cardSize)
+            .clickable { expanded = !expanded },
+        shape = RoundedCornerShape(8.dp), // Less roundness
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF252525)),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column {
+                Box {
+                    AsyncImage(
+                        model = song.imageUrl,
+                        contentDescription = "Album Art",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .background(Color.DarkGray)
+                    )
+                    // Play Icon Overlay
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(36.dp) // Slightly larger
+                            .align(Alignment.Center) // Center the icon on the image
+                            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(50)) // Circle background for visibility
+                            .padding(4.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .defaultMinSize(minHeight = if (expanded) 80.dp else 50.dp)
+                ) {
+                    Text(song.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(song.artist, color = Color.Gray, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (expanded) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Album: ${song.album}", color = Color.White, fontSize = 12.sp)
+                        Text("Year: ${song.year}", color = Color.White, fontSize = 12.sp)
+                        Text("Duration: ${song.duration}", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun BottomNavBar() {
+    var selectedItem by remember { mutableStateOf(0) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp) // Padding from screen edges
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp), // Less roundness
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)), // Darker background
+            elevation = CardDefaults.cardElevation(10.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.95f) // Wider
+                .align(Alignment.BottomCenter)
+        ) {
+            NavigationBar(
+                containerColor = Color.Transparent // Transparent to blend with Card
+            ) {
+                val items = listOf(
+                    Icons.Default.Home to "Home",
+                    Icons.Default.Search to "Search",
+                    Icons.Default.LibraryMusic to "Library",
+                    Icons.Default.AccountCircle to "Profile"
+                )
+
+                items.forEachIndexed { index, (icon, label) ->
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                icon,
+                                contentDescription = label,
+                                tint = if (selectedItem == index) Color(0xFFDF9FFF) else Color.White
+                            )
+                        },
+                        label = { Text(label, color = if (selectedItem == index) Color(0xFFDF9FFF) else Color.White) },
+                        selected = selectedItem == index,
+                        onClick = { selectedItem = index }
+                    )
+                }
+            }
+        }
+    }
+}
+
+data class Song(val title: String, val artist: String, val album: String, val year: String, val duration: String, val imageUrl: String)
