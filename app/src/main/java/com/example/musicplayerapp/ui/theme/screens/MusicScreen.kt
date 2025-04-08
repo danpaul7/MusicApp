@@ -20,19 +20,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.musicplayerapp.ui.theme.components.BottomNavBar
 
 @Composable
-fun MusicScreen() {
+fun MusicScreen(navController: NavHostController) {
     val songs = listOf(
         Song("Shape of You", "Ed Sheeran", "Divide", "2017", "3:53", "https://upload.wikimedia.org/wikipedia/en/b/b4/Shape_Of_You_%28Official_Single_Cover%29_by_Ed_Sheeran.png"),
         Song("Blinding Lights", "The Weeknd", "After Hours", "2019", "3:20", "https://m.media-amazon.com/images/I/61C33rSMlWL.jpg"),
         Song("Someone Like You", "Adele", "21", "2011", "4:45", "https://www.fathomentertainment.com/wp-content/uploads/Mobile-App-Cinemark.jpg"),
     )
 
-    Scaffold(
-        bottomBar = { BottomNavBar() } // Bottom navigation bar
-    ) { paddingValues ->
+    Scaffold(bottomBar = { BottomNavBar() }) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -55,23 +55,30 @@ fun MusicScreen() {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(songs) { song ->
-                    MusicTile(song)
+                    MusicTile(song = song) {
+                        val encodedImageUrl = java.net.URLEncoder.encode(song.imageUrl, "UTF-8")
+                        navController.navigate(
+                            "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl"
+                        )
+
+                    }
                 }
             }
         }
     }
 }
 
+
 @Composable
-fun MusicTile(song: Song) {
+fun MusicTile(song: Song, onClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val cardSize by animateDpAsState(targetValue = if (expanded) 220.dp else 160.dp, label = "size")
 
     Card(
         modifier = Modifier
             .size(cardSize)
-            .clickable { expanded = !expanded },
-        shape = RoundedCornerShape(8.dp), // Less roundness
+            .clickable { onClick() }, // 👈 navigate on click
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF252525)),
         elevation = CardDefaults.cardElevation(6.dp)
     ) {
@@ -87,15 +94,14 @@ fun MusicTile(song: Song) {
                             .height(100.dp)
                             .background(Color.DarkGray)
                     )
-                    // Play Icon Overlay
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Play",
                         tint = Color.White,
                         modifier = Modifier
-                            .size(36.dp) // Slightly larger
-                            .align(Alignment.Center) // Center the icon on the image
-                            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(50)) // Circle background for visibility
+                            .size(36.dp)
+                            .align(Alignment.Center)
+                            .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(50))
                             .padding(4.dp)
                     )
                 }
@@ -119,51 +125,11 @@ fun MusicTile(song: Song) {
     }
 }
 
-
-@Composable
-fun BottomNavBar() {
-    var selectedItem by remember { mutableStateOf(0) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp) // Padding from screen edges
-    ) {
-        Card(
-            shape = RoundedCornerShape(16.dp), // Less roundness
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)), // Darker background
-            elevation = CardDefaults.cardElevation(10.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.95f) // Wider
-                .align(Alignment.BottomCenter)
-        ) {
-            NavigationBar(
-                containerColor = Color.Transparent // Transparent to blend with Card
-            ) {
-                val items = listOf(
-                    Icons.Default.Home to "Home",
-                    Icons.Default.Search to "Search",
-                    Icons.Default.LibraryMusic to "Library",
-                    Icons.Default.AccountCircle to "Profile"
-                )
-
-                items.forEachIndexed { index, (icon, label) ->
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                icon,
-                                contentDescription = label,
-                                tint = if (selectedItem == index) Color(0xFFDF9FFF) else Color.White
-                            )
-                        },
-                        label = { Text(label, color = if (selectedItem == index) Color(0xFFDF9FFF) else Color.White) },
-                        selected = selectedItem == index,
-                        onClick = { selectedItem = index }
-                    )
-                }
-            }
-        }
-    }
-}
-
-data class Song(val title: String, val artist: String, val album: String, val year: String, val duration: String, val imageUrl: String)
+//data class Song(
+//    val title: String,
+//    val artist: String,
+//    val album: String,
+//    val year: String,
+//    val duration: String,
+//    val imageUrl: String
+//)

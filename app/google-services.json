@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "383879118012",
+    "project_id": "musicplaying-e9db2",
+    "storage_bucket": "musicplaying-e9db2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383879118012:android:994f27999ce043a57d24b9",
+        "android_client_info": {
+          "package_name": "com.example.musicplayerapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSsP-lmjg3LDnw8mdVDy4KTPN_lmDfqLw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

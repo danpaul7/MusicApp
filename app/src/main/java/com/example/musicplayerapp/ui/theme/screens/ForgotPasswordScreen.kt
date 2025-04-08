@@ -10,29 +10,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
-fun RegisterScreen(navController: NavController) {
+fun ForgotPasswordScreen(navController: NavController) {
     val auth = FirebaseAuth.getInstance()
-    val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var errorText by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                brush = Brush.verticalGradient(
+                Brush.verticalGradient(
                     colors = listOf(Color(0xFF1E1E1E), Color(0xFF121212))
                 )
             ),
@@ -51,8 +47,8 @@ fun RegisterScreen(navController: NavController) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "Register",
-                    style = MaterialTheme.typography.headlineLarge,
+                    "Reset Password",
+                    style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -65,45 +61,7 @@ fun RegisterScreen(navController: NavController) {
                     onValueChange = { email = it },
                     label = { Text("Email", color = Color.White) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFBB86FC),
-                        unfocusedBorderColor = Color.Gray,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password", color = Color.White) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFBB86FC),
-                        unfocusedBorderColor = Color.Gray,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = { Text("Confirm Password", color = Color.White) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFFBB86FC),
@@ -118,45 +76,45 @@ fun RegisterScreen(navController: NavController) {
 
                 Button(
                     onClick = {
-                        errorText = ""
-                        if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                            errorText = "Please fill in all fields."
-                        } else if (password != confirmPassword) {
-                            errorText = "Passwords do not match!"
-                        } else {
+                        message = ""
+                        if (email.isNotEmpty()) {
                             isLoading = true
-                            auth.createUserWithEmailAndPassword(email, password)
+                            auth.sendPasswordResetEmail(email)
                                 .addOnCompleteListener { task ->
                                     isLoading = false
                                     if (task.isSuccessful) {
-                                        navController.navigate("login") {
-                                            popUpTo("register") { inclusive = true }
-                                        }
+                                        message = "Password reset email sent!"
                                     } else {
-                                        errorText = task.exception?.message ?: "Registration failed!"
-                                        Log.e("Register", "Error: ${task.exception}")
+                                        message = task.exception?.message ?: "Error occurred."
+                                        Log.e("ForgotPassword", "Error: ${task.exception}")
                                     }
                                 }
+                        } else {
+                            message = "Please enter your email."
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Register", fontSize = 18.sp, color = Color.White)
+                    Text("Send Reset Email", color = Color.White)
                 }
 
-                if (errorText.isNotEmpty()) {
-                    Text(errorText, color = Color.Red, modifier = Modifier.padding(top = 10.dp))
+                if (message.isNotEmpty()) {
+                    Text(
+                        message,
+                        color = if (message.contains("sent")) Color.Green else Color.Red,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 TextButton(
-                    onClick = { navController.navigate("login") },
+                    onClick = { navController.popBackStack() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Already have an account? Login", color = Color(0xFFBB86FC))
+                    Text("Back to Login", color = Color(0xFFBB86FC))
                 }
             }
         }
