@@ -68,6 +68,8 @@ fun MusicScreen(navController: NavHostController) {
                         "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl/$encodedSongUrl"
                     )
                 }
+                3 -> ProfileScreen(navController = navController) // add this
+
             }
         }
     }

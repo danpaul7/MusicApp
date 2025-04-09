@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.datastore.preferences)
 
     // Testing
     testImplementation(libs.junit)
