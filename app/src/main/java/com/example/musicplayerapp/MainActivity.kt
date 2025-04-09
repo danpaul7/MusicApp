@@ -3,16 +3,15 @@ package com.example.musicplayerapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.*
-import com.example.musicplayerapp.ui.theme.screens.LoginScreen
-import com.example.musicplayerapp.ui.theme.screens.MusicScreen
-import com.example.musicplayerapp.ui.theme.screens.RegisterScreen
-import com.example.musicplayerapp.ui.theme.screens.ForgotPasswordScreen
-import com.example.musicplayerapp.ui.theme.screens.MusicPlayingScreen
-import com.example.musicplayerapp.ui.theme.screens.Song
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.musicplayerapp.ui.theme.screens.*
+import java.net.URLDecoder
+import java.net.URLEncoder
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,25 +21,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
 
     composable("login") { LoginScreen(navController) }
+
     composable("register") { RegisterScreen(navController) }
-    composable("music") { MusicScreen(navController) }
+
     composable("forgot_password") { ForgotPasswordScreen(navController) }
 
+    composable("music") {
+        MusicScreen(navController = navController)
+    }
+
+
     composable(
-        route = "playing/{title}/{artist}/{album}/{year}/{duration}/{imageUrl}",
+        route = "playing/{title}/{artist}/{album}/{year}/{duration}/{imageUrl}/{songUrl}"
     ) { backStackEntry ->
         val args = backStackEntry.arguments!!
-        val song = Song(
-            title = args.getString("title")!!,
-            artist = args.getString("artist")!!,
-            album = args.getString("album")!!,
-            year = args.getString("year")!!,
-            duration = args.getString("duration")!!,
-            imageUrl = java.net.URLDecoder.decode(args.getString("imageUrl")!!, "UTF-8")
-        )
+        val song = Songs(
+            title = args.getString("title") ?: "",
+            artist = args.getString("artist") ?: "",
+            album = args.getString("album") ?: "",
+            year = args.getString("year") ?: "",
+            duration = args.getString("duration") ?: "",
+            imageUrl = URLDecoder.decode(args.getString("imageUrl") ?: "", "UTF-8"),
+            //songUrl = URLDecoder.decode(args.getString("songUrl") ?: "", "UTF-8")
+                    songUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+
+            )
         MusicPlayingScreen(song)
     }
 }
@@ -51,6 +60,4 @@ fun AppNavigation() {
     NavHost(navController, startDestination = "login") {
         mainNavGraph(navController)
     }
-
 }
-

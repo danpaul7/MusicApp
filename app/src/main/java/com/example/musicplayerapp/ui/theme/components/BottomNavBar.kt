@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun BottomNavBar() {
+fun BottomNavBar(onItemSelected: (Int) -> Unit = {}, selectedItem: Int) {
     var selectedItem by remember { mutableStateOf(0) }
 
     Box(
@@ -52,7 +52,10 @@ fun BottomNavBar() {
                             )
                         },
                         selected = selectedItem == index,
-                        onClick = { selectedItem = index }
+                        onClick = {
+                            selectedItem = index
+                            onItemSelected(index)
+                        }
                     )
                 }
             }

@@ -1,5 +1,7 @@
 package com.example.musicplayerapp.ui.theme.screens
 
+import android.media.AudioManager
+import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,16 +13,55 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
-fun MusicPlayingScreen(song: Song) {
-    var isPlaying by remember { mutableStateOf(true) }
-    var progress by remember { mutableStateOf(0.3f) } // Just for UI
+fun MusicPlayingScreen(song: Songs) {
+    val context = LocalContext.current
+    var isPlaying by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0f) }
+    var currentTime by remember { mutableStateOf("0:00") }
+    val mediaPlayer = remember { MediaPlayer() }
+    val isPrepared = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(song.songUrl) {
+        try {
+            mediaPlayer.reset()
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC)
+            mediaPlayer.setDataSource(song.songUrl)
+            mediaPlayer.setOnPreparedListener {
+                isPrepared.value = true
+                mediaPlayer.start()
+                isPlaying = true
+            }
+            mediaPlayer.prepareAsync()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        onDispose {
+            mediaPlayer.stop()
+            mediaPlayer.release()
+        }
+    }
+
+
+    // Auto update progress
+    LaunchedEffect(isPlaying) {
+        while (isPlaying && mediaPlayer.isPlaying) {
+            progress = mediaPlayer.currentPosition.toFloat() / mediaPlayer.duration
+            currentTime = formatMillis(mediaPlayer.currentPosition)
+            delay(1000L)
+        }
+    }
 
     Scaffold(
         containerColor = Color.Black
@@ -53,9 +94,40 @@ fun MusicPlayingScreen(song: Song) {
             }
 
             Column {
+                var userSeeking by remember { mutableStateOf(false) }
+                var seekPosition by remember { mutableStateOf(0f) }
+                var wasPlayingBeforeSeek by remember { mutableStateOf(false) }
+
                 Slider(
-                    value = progress,
-                    onValueChange = { progress = it },
+                    value = if (userSeeking) seekPosition else progress,
+                    onValueChange = {
+                        if (isPrepared.value) {
+                            userSeeking = true
+                            seekPosition = it
+                        }
+                    },
+                    onValueChangeFinished = {
+                        if (isPrepared.value) {
+                            val newPosition = (seekPosition * mediaPlayer.duration).toInt()
+                            wasPlayingBeforeSeek = mediaPlayer.isPlaying
+
+                            // Pause before seek to prevent jitter
+                            mediaPlayer.pause()
+                            mediaPlayer.seekTo(newPosition)
+
+                            coroutineScope.launch {
+                                delay(300L)
+                                if (wasPlayingBeforeSeek) {
+                                    mediaPlayer.start()
+                                }
+                                isPlaying = mediaPlayer.isPlaying
+                            }
+
+                            progress = seekPosition
+                        }
+                        userSeeking = false
+                    }
+                    ,
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = Color.White,
@@ -67,7 +139,7 @@ fun MusicPlayingScreen(song: Song) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("0:00", color = Color.Gray, fontSize = 12.sp)
+                    Text(currentTime, color = Color.Gray, fontSize = 12.sp)
                     Text(song.duration, color = Color.Gray, fontSize = 12.sp)
                 }
             }
@@ -79,10 +151,24 @@ fun MusicPlayingScreen(song: Song) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { /* Previous */ }) {
+                IconButton(onClick = {
+                    mediaPlayer.seekTo(0)
+                }) {
                     Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(40.dp))
                 }
-                IconButton(onClick = { isPlaying = !isPlaying }) {
+
+                IconButton(onClick = {
+                    if (isPrepared.value) {
+                        if (mediaPlayer.isPlaying) {
+                            mediaPlayer.pause()
+                            isPlaying = false
+                        } else {
+                            mediaPlayer.start()
+                            isPlaying = true
+                        }
+                    }
+                })
+                {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play/Pause",
@@ -90,10 +176,19 @@ fun MusicPlayingScreen(song: Song) {
                         modifier = Modifier.size(64.dp)
                     )
                 }
-                IconButton(onClick = { /* Next */ }) {
+
+                IconButton(onClick = {
+                    mediaPlayer.seekTo(mediaPlayer.duration)
+                }) {
                     Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(40.dp))
                 }
             }
         }
     }
+}
+
+fun formatMillis(millis: Int): String {
+    val minutes = millis / 1000 / 60
+    val seconds = (millis / 1000) % 60
+    return String.format("%d:%02d", minutes, seconds)
 }

@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,61 +23,103 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.musicplayerapp.ui.theme.components.BottomNavBar
+import com.example.musicplayerapp.ui.theme.screens.SearchScreen
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import java.net.URLEncoder
 
 @Composable
 fun MusicScreen(navController: NavHostController) {
-    val songs = listOf(
-        Song("Shape of You", "Ed Sheeran", "Divide", "2017", "3:53", "https://upload.wikimedia.org/wikipedia/en/b/b4/Shape_Of_You_%28Official_Single_Cover%29_by_Ed_Sheeran.png"),
-        Song("Blinding Lights", "The Weeknd", "After Hours", "2019", "3:20", "https://m.media-amazon.com/images/I/61C33rSMlWL.jpg"),
-        Song("Someone Like You", "Adele", "21", "2011", "4:45", "https://www.fathomentertainment.com/wp-content/uploads/Mobile-App-Cinemark.jpg"),
-    )
+    var selectedTab by remember { mutableStateOf(0) }
+    val songsState = remember { mutableStateOf<List<Song>>(emptyList()) }
+    val firestore = FirebaseFirestore.getInstance()
 
-    Scaffold(bottomBar = { BottomNavBar() }) { paddingValues ->
-        Column(
+    // Firebase Listener
+    DisposableEffect(Unit) {
+        val registration: ListenerRegistration = firestore.collection("songs")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                val songList = snapshot.documents.mapNotNull { it.toObject(Song::class.java) }
+                songsState.value = songList
+            }
+        onDispose { registration.remove() }
+    }
+
+    Scaffold(
+        bottomBar = {
+            BottomNavBar(
+                selectedItem = selectedTab,
+                onItemSelected = { selectedTab = it }
+            )
+        }
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
                 .padding(paddingValues)
-                .padding(16.dp)
         ) {
-            Text(
-                "Music Picks for You",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(songs) { song ->
-                    MusicTile(song = song) {
-                        val encodedImageUrl = java.net.URLEncoder.encode(song.imageUrl, "UTF-8")
-                        navController.navigate(
-                            "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl"
-                        )
-
-                    }
+            when (selectedTab) {
+                0 -> MusicContent(allSongs = songsState.value, navController = navController)
+                1 -> SearchScreen(allSongs = songsState.value) { song ->
+                    val encodedImageUrl = URLEncoder.encode(song.imageUrl, "UTF-8")
+                    val encodedSongUrl = URLEncoder.encode(song.songUrl, "UTF-8")
+                    navController.navigate(
+                        "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl/$encodedSongUrl"
+                    )
                 }
             }
         }
     }
 }
 
+@Composable
+fun MusicContent(allSongs: List<Song>, navController: NavHostController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(16.dp)
+    ) {
+        Text(
+            "Music Picks for You",
+            color = Color.White,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(allSongs) { song ->
+                MusicTile(song = song) {
+                    val encodedImageUrl = URLEncoder.encode(song.imageUrl, "UTF-8")
+                    val encodedSongUrl = URLEncoder.encode(song.songUrl, "UTF-8")
+                    navController.navigate(
+                        "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl/$encodedSongUrl"
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun MusicTile(song: Song, onClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    val cardSize by animateDpAsState(targetValue = if (expanded) 220.dp else 160.dp, label = "size")
+    val cardSize by animateDpAsState(targetValue = if (expanded) 220.dp else 160.dp, label = "cardSize")
 
     Card(
         modifier = Modifier
             .size(cardSize)
-            .clickable { onClick() }, // 👈 navigate on click
+            .clickable {
+                expanded = !expanded
+                onClick()
+            },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF252525)),
         elevation = CardDefaults.cardElevation(6.dp)
@@ -125,11 +167,12 @@ fun MusicTile(song: Song, onClick: () -> Unit) {
     }
 }
 
-//data class Song(
-//    val title: String,
-//    val artist: String,
-//    val album: String,
-//    val year: String,
-//    val duration: String,
-//    val imageUrl: String
-//)
+data class Song(
+    val title: String = "",
+    val artist: String = "",
+    val album: String = "",
+    val year: String = "",
+    val duration: String = "",
+    val imageUrl: String = "",
+    val songUrl: String = ""
+)
