@@ -30,7 +30,7 @@ fun BottomNavBar(onItemSelected: (Int) -> Unit = {}, selectedItem: Int) {
                 val items = listOf(
                     Icons.Default.Home to "Home",
                     Icons.Default.Search to "Search",
-                    Icons.Default.LibraryMusic to "Library",
+                    Icons.Default.LibraryMusic to "library",
                     Icons.Default.AccountCircle to "Profile"
                 )
 

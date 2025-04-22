@@ -19,8 +19,9 @@ object Routes {
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot_password"
     const val MUSIC = "music"
-    const val PLAYING = "playing/{index}" // Changed to use index
+    const val PLAYING = "playing/{index}"
     const val PROFILE = "profile"
+    const val LIBRARY = "library"
 }
 
 class MainActivity : ComponentActivity() {
@@ -42,17 +43,17 @@ fun AppNavigation() {
 }
 
 fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
-    composable("login") { LoginScreen(navController) }
-    composable("register") { RegisterScreen(navController) }
-    composable("forgot_password") { ForgotPasswordScreen(navController) }
-    composable("music") {
-        MusicScreen(navController = navController)
-    }
+    composable(Routes.LOGIN) { LoginScreen(navController) }
+    composable(Routes.REGISTER) { RegisterScreen(navController) }
+    composable(Routes.FORGOT_PASSWORD) { ForgotPasswordScreen(navController) }
+    composable(Routes.MUSIC) { MusicScreen(navController = navController) }
     composable("playing/{index}") { backStackEntry ->
         val index = backStackEntry.arguments?.getString("index")?.toIntOrNull() ?: 0
         MusicPlayingScreen(index = index, navController = navController)
     }
+    composable(Routes.LIBRARY) { MusicLibraryScreen(navController = navController) }
 }
+
 
 @Composable
 fun SessionHandler(navController: NavHostController) {

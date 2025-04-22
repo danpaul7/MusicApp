@@ -157,6 +157,7 @@ fun MusicTile(song: Song, onClick: () -> Unit) {
 }
 
 data class Song(
+    val id: String = "",
     val title: String = "",
     val artist: String = "",
     val album: String = "",

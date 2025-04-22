@@ -1,7 +1,6 @@
 package com.example.musicplayerapp.ui.theme.screens
 
 import android.media.AudioAttributes
-import android.media.AudioManager
 import android.media.MediaPlayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,8 +20,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.musicplayerapp.MusicRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +34,8 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
     val context = LocalContext.current
     var songs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
+    val firestore = FirebaseFirestore.getInstance()
+    val user = FirebaseAuth.getInstance().currentUser
 
     // Load songs from MusicRepository
     LaunchedEffect(Unit) {
@@ -52,10 +57,24 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
     }
 
     var isPlaying by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }  // Changed to mutableFloatStateOf
+    var progress by remember { mutableFloatStateOf(0f) }
     var currentTime by remember { mutableStateOf("0:00") }
     val mediaPlayer = remember { MediaPlayer() }
     val isPrepared = remember { mutableStateOf(false) }
+    var isLiked by remember { mutableStateOf(false) }
+
+    // Fetch like status for the current song
+    LaunchedEffect(song) {
+        if (user != null && song != null) {
+            try {
+                val doc = firestore.collection("users").document(user.uid).get().await()
+                val likedSongs = doc.get("likedSongs") as? List<String> ?: emptyList()
+                isLiked = likedSongs.contains(song.id)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     if (song != null) {
         val localSongPath = "${song.title}.mp3"
@@ -63,7 +82,6 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
         DisposableEffect(localSongPath) {
             try {
                 mediaPlayer.reset()
-                // Updated to use setAudioAttributes
                 mediaPlayer.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -144,7 +162,7 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
 
             Column {
                 var userSeeking by remember { mutableStateOf(false) }
-                var seekPosition by remember { mutableFloatStateOf(0f) }  // Changed to mutableFloatStateOf
+                var seekPosition by remember { mutableFloatStateOf(0f) }
                 var wasPlayingBeforeSeek by remember { mutableStateOf(false) }
 
                 Slider(
@@ -241,6 +259,42 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
                         modifier = Modifier.size(40.dp)
                     )
                 }
+
+                // Like Button
+                if (song != null && user != null) {
+                    IconButton(onClick = {
+                        coroutineScope.launch {
+                            try {
+                                val docRef = firestore.collection("users").document(user.uid)
+                                if (!isLiked) {
+                                    LikedSongsDataStore.addLikedSong(context, song.title)
+                                } else {
+                                    LikedSongsDataStore.removeLikedSong(context, song.title)
+                                }
+                                isLiked = !isLiked
+                            } catch (e: Exception) {
+                                if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.NOT_FOUND) {
+                                    val docRef = firestore.collection("users").document(user.uid)
+                                    if (!isLiked) {
+                                        docRef.set(mapOf("likedSongs" to listOf(song.id)))
+                                        isLiked = true
+                                    } else {
+                                        isLiked = false
+                                    }
+                                } else {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Like",
+                            tint = if (isLiked) Color.Red else Color.White,
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -248,6 +302,6 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
 
 fun formatMillis(millis: Int): String {
     val minutes = millis / 1000 / 60
-    val seconds = (millis / 1000) % 60  // Fixed typo
-    return String.format(Locale.US, "%d:%02d", minutes, seconds)  // Added Locale.US
+    val seconds = (millis / 1000) % 60
+    return String.format(Locale.US, "%d:%02d", minutes, seconds)
 }
