@@ -7,5 +7,6 @@ data class Songs(
     val album: String,
     val year: String,
     val duration: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val liked: Boolean = false
 )

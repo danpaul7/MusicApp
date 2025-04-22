@@ -26,6 +26,8 @@ import coil.compose.AsyncImage
 import com.example.musicplayerapp.MusicRepository
 import com.example.musicplayerapp.ui.theme.components.BottomNavBar
 import kotlinx.coroutines.launch
+import com.example.musicplayerapp.Routes
+
 
 @Composable
 fun MusicScreen(navController: NavHostController) {
@@ -60,6 +62,7 @@ fun MusicScreen(navController: NavHostController) {
                 1 -> SearchScreen(allSongs = songsState.value) { index ->
                     navController.navigate("playing/$index")
                 }
+                2 -> navController.navigate(Routes.LIBRARY)
                 3 -> ProfileScreen(navController = navController)
             }
         }
@@ -164,5 +167,6 @@ data class Song(
     val year: String = "",
     val duration: String = "",
     val imageUrl: String = "",
-    val songUrl: String = ""
+    val songUrl: String = "",
+    val liked: Boolean = false
 )

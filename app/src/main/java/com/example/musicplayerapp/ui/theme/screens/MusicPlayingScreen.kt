@@ -20,9 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.musicplayerapp.MusicRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -35,7 +34,7 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
     var songs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val firestore = FirebaseFirestore.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Load songs from MusicRepository
     LaunchedEffect(Unit) {
@@ -63,20 +62,34 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
     val isPrepared = remember { mutableStateOf(false) }
     var isLiked by remember { mutableStateOf(false) }
 
-    // Fetch like status for the current song
-    LaunchedEffect(song) {
-        if (user != null && song != null) {
+    // Derive a valid Firestore document ID
+    val songId = song?.id?.takeIf { it.isNotBlank() } ?: song?.title?.toLowerCase(Locale.US)?.replace(" ", "_") ?: ""
+
+    // Fetch like status for the current song from Firestore
+    LaunchedEffect(song, songId) {
+        if (song != null && songId.isNotEmpty()) {
             try {
-                val doc = firestore.collection("users").document(user.uid).get().await()
-                val likedSongs = doc.get("likedSongs") as? List<String> ?: emptyList()
-                isLiked = likedSongs.contains(song.id)
+                println("Fetching like status for song ID: $songId")
+                val songDoc = firestore.collection("songs").document(songId)
+                val snapshot = songDoc.get().await()
+                isLiked = snapshot.getBoolean("liked") ?: false
+                println("Fetched like status for song $songId: isLiked=$isLiked")
             } catch (e: Exception) {
                 e.printStackTrace()
+                println("Error fetching like status for song $songId: ${e.message}")
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Failed to fetch like status: ${e.message}")
+                }
+            }
+        } else if (song != null) {
+            println("Invalid song ID for song: ${song.title}")
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Invalid song ID for ${song.title}")
             }
         }
     }
 
-    if (song != null) {
+    if (song != null && songId.isNotEmpty()) {
         val localSongPath = "${song.title}.mp3"
 
         DisposableEffect(localSongPath) {
@@ -119,7 +132,10 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
         }
     }
 
-    Scaffold(containerColor = Color.Black) { padding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Color.Black
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -260,36 +276,51 @@ fun MusicPlayingScreen(index: Int, navController: NavHostController) {
                     )
                 }
 
-                // Like Button
-                if (song != null && user != null) {
-                    IconButton(onClick = {
-                        coroutineScope.launch {
-                            try {
-                                val docRef = firestore.collection("users").document(user.uid)
-                                if (!isLiked) {
-                                    LikedSongsDataStore.addLikedSong(context, song.title)
-                                } else {
-                                    LikedSongsDataStore.removeLikedSong(context, song.title)
-                                }
-                                isLiked = !isLiked
-                            } catch (e: Exception) {
-                                if (e is com.google.firebase.firestore.FirebaseFirestoreException && e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.NOT_FOUND) {
-                                    val docRef = firestore.collection("users").document(user.uid)
-                                    if (!isLiked) {
-                                        docRef.set(mapOf("likedSongs" to listOf(song.id)))
-                                        isLiked = true
-                                    } else {
-                                        isLiked = false
-                                    }
-                                } else {
+                if (song != null && songId.isNotEmpty()) {
+                    var isUpdating by remember { mutableStateOf(false) }
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                isUpdating = true
+                                try {
+                                    println("Like button clicked for song ID: $songId")
+                                    val songDocRef = firestore.collection("songs").document(songId)
+                                    val newLikeStatus = !isLiked
+                                    // Optimistically update UI
+                                    isLiked = newLikeStatus
+                                    println("Attempting to set liked=$newLikeStatus for song $songId")
+                                    // Update Firestore, creating document if it doesn't exist
+                                    songDocRef.set(
+                                        mapOf(
+                                            "liked" to newLikeStatus,
+                                            "album" to song.album,
+                                            "artist" to song.artist,
+                                            "duration" to song.duration,
+                                            "imageUrl" to song.imageUrl,
+                                            "title" to song.title,
+                                            "year" to song.year
+                                        ),
+                                        SetOptions.merge()
+                                    ).await()
+                                    println("Successfully updated liked=$newLikeStatus for song $songId")
+                                } catch (e: Exception) {
+                                    // Revert UI on error
+                                    isLiked = !isLiked
                                     e.printStackTrace()
+                                    println("Error updating like status for song $songId: ${e.message}")
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Failed to update like status: ${e.message}")
+                                    }
+                                } finally {
+                                    isUpdating = false
                                 }
                             }
-                        }
-                    }) {
+                        },
+                        enabled = !isUpdating
+                    ) {
                         Icon(
                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
+                            contentDescription = if (isLiked) "Unlike" else "Like",
                             tint = if (isLiked) Color.Red else Color.White,
                             modifier = Modifier.size(40.dp)
                         )
