@@ -1,5 +1,6 @@
 package com.example.musicplayerapp.ui.theme.screens
 
+import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import androidx.compose.foundation.background
@@ -17,64 +18,90 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.musicplayerapp.MusicRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
+fun MusicPlayingScreen(index: Int, navController: NavHostController) {
     val context = LocalContext.current
+    var songs by remember { mutableStateOf<List<Song>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Load songs from MusicRepository
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            songs = MusicRepository.getSongs(context)
+        }
+    }
+
+    val song = songs.getOrNull(index)
+
+    // If no song at index, go back to music screen
+    if (song == null && songs.isNotEmpty()) {
+        LaunchedEffect(Unit) {
+            navController.navigate("music") {
+                popUpTo("playing/$index") { inclusive = true }
+            }
+        }
+        return
+    }
+
     var isPlaying by remember { mutableStateOf(false) }
-    var progress by remember { mutableStateOf(0f) }
+    var progress by remember { mutableFloatStateOf(0f) }  // Changed to mutableFloatStateOf
     var currentTime by remember { mutableStateOf("0:00") }
     val mediaPlayer = remember { MediaPlayer() }
     val isPrepared = remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
 
-    // Construct local asset path based on song title
-    val localSongPath = "${song.title}.mp3" // e.g., "Shape of You.mp3"
+    if (song != null) {
+        val localSongPath = "${song.title}.mp3"
 
-    DisposableEffect(localSongPath) {
-        try {
-            mediaPlayer.reset()
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC)
-            // Load from assets instead of songUrl
-            val assetFileDescriptor = context.assets.openFd(localSongPath)
-            mediaPlayer.setDataSource(
-                assetFileDescriptor.fileDescriptor,
-                assetFileDescriptor.startOffset,
-                assetFileDescriptor.length
-            )
-            mediaPlayer.setOnPreparedListener {
-                isPrepared.value = true
-                mediaPlayer.start()
-                isPlaying = true
+        DisposableEffect(localSongPath) {
+            try {
+                mediaPlayer.reset()
+                // Updated to use setAudioAttributes
+                mediaPlayer.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                val assetFileDescriptor = context.assets.openFd(localSongPath)
+                mediaPlayer.setDataSource(
+                    assetFileDescriptor.fileDescriptor,
+                    assetFileDescriptor.startOffset,
+                    assetFileDescriptor.length
+                )
+                mediaPlayer.setOnPreparedListener {
+                    isPrepared.value = true
+                    mediaPlayer.start()
+                    isPlaying = true
+                }
+                mediaPlayer.prepareAsync()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            mediaPlayer.prepareAsync()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Handle case where file is not found; for now, print error
+
+            onDispose {
+                mediaPlayer.stop()
+                mediaPlayer.release()
+            }
         }
 
-        onDispose {
-            mediaPlayer.stop()
-            mediaPlayer.release()
-        }
-    }
-
-    // Auto update progress
-    LaunchedEffect(isPlaying) {
-        while (isPlaying && mediaPlayer.isPlaying) {
-            progress = mediaPlayer.currentPosition.toFloat() / mediaPlayer.duration
-            currentTime = formatMillis(mediaPlayer.currentPosition)
-            delay(1000L)
+        LaunchedEffect(isPlaying) {
+            while (isPlaying && mediaPlayer.isPlaying) {
+                progress = mediaPlayer.currentPosition.toFloat() / mediaPlayer.duration
+                currentTime = formatMillis(mediaPlayer.currentPosition)
+                delay(1000L)
+            }
         }
     }
 
-    Scaffold(
-        containerColor = Color.Black
-    ) { padding ->
+    Scaffold(containerColor = Color.Black) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -87,7 +114,7 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
             Spacer(modifier = Modifier.height(16.dp))
 
             AsyncImage(
-                model = song.imageUrl,
+                model = song?.imageUrl ?: "",
                 contentDescription = "Album Art",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -96,15 +123,28 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(song.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(song.artist, fontSize = 16.sp, color = Color.Gray)
+                Text(
+                    song?.title ?: "Loading...",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    song?.artist ?: "",
+                    fontSize = 16.sp,
+                    color = Color.Gray
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Album: ${song.album} (${song.year})", color = Color.LightGray, fontSize = 14.sp)
+                Text(
+                    if (song != null) "Album: ${song.album} (${song.year})" else "",
+                    color = Color.LightGray,
+                    fontSize = 14.sp
+                )
             }
 
             Column {
                 var userSeeking by remember { mutableStateOf(false) }
-                var seekPosition by remember { mutableStateOf(0f) }
+                var seekPosition by remember { mutableFloatStateOf(0f) }  // Changed to mutableFloatStateOf
                 var wasPlayingBeforeSeek by remember { mutableStateOf(false) }
 
                 Slider(
@@ -119,18 +159,13 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
                         if (isPrepared.value) {
                             val newPosition = (seekPosition * mediaPlayer.duration).toInt()
                             wasPlayingBeforeSeek = mediaPlayer.isPlaying
-
                             mediaPlayer.pause()
                             mediaPlayer.seekTo(newPosition)
-
                             coroutineScope.launch {
                                 delay(300L)
-                                if (wasPlayingBeforeSeek) {
-                                    mediaPlayer.start()
-                                }
+                                if (wasPlayingBeforeSeek) mediaPlayer.start()
                                 isPlaying = mediaPlayer.isPlaying
                             }
-
                             progress = seekPosition
                         }
                         userSeeking = false
@@ -147,7 +182,7 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(currentTime, color = Color.Gray, fontSize = 12.sp)
-                    Text(song.duration, color = Color.Gray, fontSize = 12.sp)
+                    Text(song?.duration ?: "0:00", color = Color.Gray, fontSize = 12.sp)
                 }
             }
 
@@ -159,9 +194,18 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    mediaPlayer.seekTo(0)
+                    if (index > 0) {
+                        navController.navigate("playing/${index - 1}") {
+                            popUpTo("playing/$index") { inclusive = true }
+                        }
+                    }
                 }) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(40.dp))
+                    Icon(
+                        Icons.Default.SkipPrevious,
+                        contentDescription = "Previous",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
                 }
 
                 IconButton(onClick = {
@@ -184,9 +228,18 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
                 }
 
                 IconButton(onClick = {
-                    mediaPlayer.seekTo(mediaPlayer.duration)
+                    if (index < songs.size - 1) {
+                        navController.navigate("playing/${index + 1}") {
+                            popUpTo("playing/$index") { inclusive = true }
+                        }
+                    }
                 }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(40.dp))
+                    Icon(
+                        Icons.Default.SkipNext,
+                        contentDescription = "Next",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
                 }
             }
         }
@@ -195,6 +248,6 @@ fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
 
 fun formatMillis(millis: Int): String {
     val minutes = millis / 1000 / 60
-    val seconds = (millis / 1000) % 60
-    return String.format("%d:%02d", minutes, seconds)
+    val seconds = (millis / 1000) % 60  // Fixed typo
+    return String.format(Locale.US, "%d:%02d", minutes, seconds)  // Added Locale.US
 }

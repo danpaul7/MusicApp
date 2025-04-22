@@ -6,7 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -16,33 +16,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.example.musicplayerapp.MusicRepository
 import com.example.musicplayerapp.ui.theme.components.BottomNavBar
-import com.example.musicplayerapp.ui.theme.screens.SearchScreen
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import java.net.URLEncoder
+import kotlinx.coroutines.launch
 
 @Composable
 fun MusicScreen(navController: NavHostController) {
     var selectedTab by remember { mutableStateOf(0) }
     val songsState = remember { mutableStateOf<List<Song>>(emptyList()) }
-    val firestore = FirebaseFirestore.getInstance()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
-    // Firebase Listener
-    DisposableEffect(Unit) {
-        val registration: ListenerRegistration = firestore.collection("songs")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null) return@addSnapshotListener
-                val songList = snapshot.documents.mapNotNull { it.toObject(Song::class.java) }
-                songsState.value = songList
-            }
-        onDispose { registration.remove() }
+    // Load songs from MusicRepository
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            songsState.value = MusicRepository.getSongs(context)
+        }
     }
 
     Scaffold(
@@ -61,15 +57,10 @@ fun MusicScreen(navController: NavHostController) {
         ) {
             when (selectedTab) {
                 0 -> MusicContent(allSongs = songsState.value, navController = navController)
-                1 -> SearchScreen(allSongs = songsState.value) { song ->
-                    val encodedImageUrl = URLEncoder.encode(song.imageUrl, "UTF-8")
-                    val encodedSongUrl = URLEncoder.encode(song.songUrl, "UTF-8")
-                    navController.navigate(
-                        "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl/$encodedSongUrl"
-                    )
+                1 -> SearchScreen(allSongs = songsState.value) { index ->
+                    navController.navigate("playing/$index")
                 }
-                3 -> ProfileScreen(navController = navController) // add this
-
+                3 -> ProfileScreen(navController = navController)
             }
         }
     }
@@ -97,13 +88,9 @@ fun MusicContent(allSongs: List<Song>, navController: NavHostController) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(allSongs) { song ->
+            itemsIndexed(allSongs) { index, song ->
                 MusicTile(song = song) {
-                    val encodedImageUrl = URLEncoder.encode(song.imageUrl, "UTF-8")
-                    val encodedSongUrl = URLEncoder.encode(song.songUrl, "UTF-8")
-                    navController.navigate(
-                        "playing/${song.title}/${song.artist}/${song.album}/${song.year}/${song.duration}/$encodedImageUrl/$encodedSongUrl"
-                    )
+                    navController.navigate("playing/$index")
                 }
             }
         }

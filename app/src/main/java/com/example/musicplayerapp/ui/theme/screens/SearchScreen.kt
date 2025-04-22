@@ -2,7 +2,7 @@ package com.example.musicplayerapp.ui.theme.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -11,10 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.musicplayerapp.ui.theme.screens.Song
 
 @Composable
-fun SearchScreen(allSongs: List<Song>, onSongClick: (Song) -> Unit) {
+fun SearchScreen(allSongs: List<Song>, onSongClick: (Int) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredSongs = remember(searchQuery) {
@@ -41,9 +40,9 @@ fun SearchScreen(allSongs: List<Song>, onSongClick: (Song) -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn {
-            items(filteredSongs) { song ->
+            itemsIndexed(filteredSongs) { index, song ->
                 Card(
-                    onClick = { onSongClick(song) },
+                    onClick = { onSongClick(index) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),

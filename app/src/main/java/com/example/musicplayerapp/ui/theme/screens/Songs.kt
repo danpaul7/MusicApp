@@ -1,4 +1,4 @@
-package com.example.musicplayerapp.ui.theme.screens
+package com.example.musicplayerapp
 
 data class Songs(
     val title: String,
@@ -6,6 +6,5 @@ data class Songs(
     val album: String,
     val year: String,
     val duration: String,
-    val imageUrl: String,
-    val songUrl: String // 🔥 URL to the mp3 file
+    val imageUrl: String
 )
