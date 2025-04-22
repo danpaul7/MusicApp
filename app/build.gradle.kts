@@ -5,8 +5,6 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-
-
 android {
     namespace = "com.example.musicplayerapp"
     compileSdk = 35
@@ -32,8 +30,9 @@ android {
         compose = true
     }
 }
+
 dependencies {
-    // Firebase platform (BoM first)
+    // Firebase BOM
     implementation(platform(libs.firebase.bom))
 
     // Firebase services
@@ -41,7 +40,7 @@ dependencies {
     implementation(libs.firebase.database.ktx)
     implementation(libs.firebase.firestore)
 
-    // Jetpack Compose
+    // AndroidX and Compose
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -55,7 +54,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.datastore.preferences)
 
-    // Testing
+    // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

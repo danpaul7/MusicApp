@@ -22,9 +22,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
-
 @Composable
-fun MusicPlayingScreen(song: Songs) {
+fun MusicPlayingScreen(song: Songs) { // Changed from Songs to Song
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
@@ -32,11 +31,21 @@ fun MusicPlayingScreen(song: Songs) {
     val mediaPlayer = remember { MediaPlayer() }
     val isPrepared = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    DisposableEffect(song.songUrl) {
+
+    // Construct local asset path based on song title
+    val localSongPath = "${song.title}.mp3" // e.g., "Shape of You.mp3"
+
+    DisposableEffect(localSongPath) {
         try {
             mediaPlayer.reset()
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC)
-            mediaPlayer.setDataSource(song.songUrl)
+            // Load from assets instead of songUrl
+            val assetFileDescriptor = context.assets.openFd(localSongPath)
+            mediaPlayer.setDataSource(
+                assetFileDescriptor.fileDescriptor,
+                assetFileDescriptor.startOffset,
+                assetFileDescriptor.length
+            )
             mediaPlayer.setOnPreparedListener {
                 isPrepared.value = true
                 mediaPlayer.start()
@@ -45,6 +54,7 @@ fun MusicPlayingScreen(song: Songs) {
             mediaPlayer.prepareAsync()
         } catch (e: Exception) {
             e.printStackTrace()
+            // Handle case where file is not found; for now, print error
         }
 
         onDispose {
@@ -52,7 +62,6 @@ fun MusicPlayingScreen(song: Songs) {
             mediaPlayer.release()
         }
     }
-
 
     // Auto update progress
     LaunchedEffect(isPlaying) {
@@ -111,7 +120,6 @@ fun MusicPlayingScreen(song: Songs) {
                             val newPosition = (seekPosition * mediaPlayer.duration).toInt()
                             wasPlayingBeforeSeek = mediaPlayer.isPlaying
 
-                            // Pause before seek to prevent jitter
                             mediaPlayer.pause()
                             mediaPlayer.seekTo(newPosition)
 
@@ -126,8 +134,7 @@ fun MusicPlayingScreen(song: Songs) {
                             progress = seekPosition
                         }
                         userSeeking = false
-                    }
-                    ,
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = SliderDefaults.colors(
                         thumbColor = Color.White,
@@ -167,8 +174,7 @@ fun MusicPlayingScreen(song: Songs) {
                             isPlaying = true
                         }
                     }
-                })
-                {
+                }) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = "Play/Pause",

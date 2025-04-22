@@ -65,8 +65,7 @@ fun NavGraphBuilder.mainNavGraph(navController: NavHostController) {
             year = args.getString("year") ?: "",
             duration = args.getString("duration") ?: "",
             imageUrl = URLDecoder.decode(args.getString("imageUrl") ?: "", "UTF-8"),
-            songUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        )
+            songUrl = args.getString("songPath") ?: "")
         MusicPlayingScreen(song)
     }
 }
