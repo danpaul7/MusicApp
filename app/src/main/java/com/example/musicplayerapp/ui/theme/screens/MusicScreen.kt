@@ -78,7 +78,7 @@ fun MusicContent(allSongs: List<Song>, navController: NavHostController) {
             .padding(16.dp)
     ) {
         Text(
-            "Music Picks for You",
+            "Podcast Picks for You",
             color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,

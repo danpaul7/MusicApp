@@ -32,7 +32,7 @@ fun SearchScreen(allSongs: List<Song>, onSongClick: (Int) -> Unit) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = { Text("Search songs") },
+            label = { Text("Search podcasts") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             modifier = Modifier.fillMaxWidth()
         )

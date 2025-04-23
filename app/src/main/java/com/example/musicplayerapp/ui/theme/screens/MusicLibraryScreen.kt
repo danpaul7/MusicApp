@@ -118,7 +118,7 @@ fun MusicLibraryScreen(navController: NavHostController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Liked Songs") },
+                title = { Text("My Liked Podcasts") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -168,7 +168,7 @@ fun MusicLibraryScreen(navController: NavHostController) {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No liked songs yet!", fontSize = 16.sp)
+                        Text("No liked podcast yet!", fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Like some songs in the player to see them here.", fontSize = 14.sp)
                     }
